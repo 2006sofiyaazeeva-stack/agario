@@ -1,16 +1,13 @@
 import pygame
 import random
 import math
-import json
-import os
 
 # --- Конфигурация ---
 CONFIG = {
-    "map_size":(1200, 800),
+    "map_size": (800, 600),  # Можно поменять на любой размер
     "player": {"start_mass": 10, "color": (0, 128, 255)},
     "food": {"count": 100, "mass": 1, "color": (0, 255, 0)},
     "virus": {"count": 5, "mass": 50, "color": (128, 0, 128)},
-    "colors": {"background": (240, 240, 240)},
 }
 
 # --- Базовый класс Blob ---
@@ -21,12 +18,11 @@ class Blob:
         self.mass = mass
         self.radius = max(5, int(math.sqrt(mass) * 2))
         self.color = color
-        self.speed = 20 / self.radius  # Чем больше, тем медленнее
+        self.speed = 20 / self.radius
 
     def move(self, dx, dy):
         self.x += dx * self.speed
         self.y += dy * self.speed
-        # Ограничение по границам экрана
         self.x = max(self.radius, min(CONFIG["map_size"][0] - self.radius, self.x))
         self.y = max(self.radius, min(CONFIG["map_size"][1] - self.radius, self.y))
 
@@ -72,16 +68,15 @@ class Game:
         self.viruses = [Virus(random.randint(0, CONFIG["map_size"][0]),
                              random.randint(0, CONFIG["map_size"][1]))
                        for _ in range(CONFIG["virus"]["count"])]
+        self.bg_white = False  # Флаг для цвета фона
 
     def update(self):
-        # Поедание еды
         for food in self.foods[:]:
             if check_collision(self.player, food):
                 self.player.eat(food)
                 self.foods.remove(food)
                 self.foods.append(Food(random.randint(0, CONFIG["map_size"][0]),
                                       random.randint(0, CONFIG["map_size"][1])))
-        # Столкновение с вирусами
         for virus in self.viruses:
             if check_collision(self.player, virus) and self.player.mass < virus.mass * 1.25:
                 self.player.mass = max(1, self.player.mass // 2)
@@ -89,32 +84,35 @@ class Game:
                 self.player.speed = 20 / self.player.radius
 
     def draw(self, surface):
-        surface.fill(CONFIG["colors"]["background"])
+        # Переключение цвета фона
+        if self.bg_white:
+            surface.fill((255, 255, 255))  # Белый
+        else:
+            surface.fill((0, 0, 0))  # Чёрный
         self.player.draw(surface)
         for food in self.foods:
             food.draw(surface)
         for virus in self.viruses:
             virus.draw(surface)
-        # HUD: отображение счёта
         font = pygame.font.SysFont(None, 36)
-        score_text = font.render(f"Score: {self.player.score}", True, (0, 0, 0))
+        score_text = font.render(f"Score: {self.player.score}", True, (255, 255, 255) if self.bg_white else (255, 255, 255))
         surface.blit(score_text, (10, 10))
 
 # --- Основная функция ---
 def main():
     pygame.init()
     screen = pygame.display.set_mode(CONFIG["map_size"])
-    pygame.display.set_caption("Agar.io Clone")
+    pygame.display.set_caption("Agar.io Clone (Toggle Background)")
     clock = pygame.time.Clock()
     game = Game()
-
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                game.bg_white = not game.bg_white  # Переключение фона
 
-        # Управление
         keys = pygame.key.get_pressed()
         dx, dy = 0, 0
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
@@ -125,15 +123,13 @@ def main():
             dy -= 1
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             dy += 1
-
         game.player.move(dx, dy)
         game.update()
         game.draw(screen)
-
         pygame.display.flip()
         clock.tick(60)
-
     pygame.quit()
 
 if __name__ == "__main__":
     main()
+
